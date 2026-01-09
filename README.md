@@ -1,4 +1,4 @@
-<img width="852" height="357" alt="isaq" src="https://github.com/user-attachments/assets/b4190fb3-980b-437d-bd63-f78ed1004c95" />
+<img width="452" height="187" alt="isaq" src="https://github.com/user-attachments/assets/b4190fb3-980b-437d-bd63-f78ed1004c95" />
 
 # **ISAQ: Deterministic Dyno-Module Agent**
 
