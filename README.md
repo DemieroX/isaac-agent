@@ -1,9 +1,18 @@
-<img width="452" height="187" alt="isaq" src="https://github.com/user-attachments/assets/b4190fb3-980b-437d-bd63-f78ed1004c95" />
-
-# **ISAQ: Deterministic Dyno-Module Agent**
+```
+/\\\\\\\\\\\      /\\\\\\\\\\\        /\\\\\\\\\          /\\\\\\\\\           /\\\\\\\\\\  
+ _\/////\\\///____/\\\/////////\\\____/\\\\\\\\\\\\\____/\\\\\\\\\\\\\_______/\\\////////___ 
+  _____\/\\\______\//\\\______\///____/\\\/////////\\\__/\\\/////////\\\____/\\\/___________  
+   _____\/\\\_______\////\\\_________\/\\\_______\/\\\_\/\\\_______\/\\\___/\\\_____________ 
+    _____\/\\\__________\////\\\______\/\\\\\\\\\\\\\\\_\/\\\\\\\\\\\\\\\_ \/\\\_____________
+     _____\/\\\_____________\////\\\___\/\\\/////////\\\_\/\\\/////////\\\__\//\\\____________ 
+      _____\/\\\______/\\\______\//\\\__\/\\\_______\/\\\_\/\\\_______\/\\\___\///\\\__________
+       __/\\\\\\\\\\\_\///\\\\\\\\\\\/___\/\\\_______\/\\\_\/\\\_______\/\\\_____\////\\\\\\\\\_
+        _\///////////____\///////////_____\///________\///__\///________\///_________\/////////--
+```
+# **ISAAC: Deterministic Dyno-Module Agent**
 
 ---
-A scalable, non-generative intent engine designed for local-first automation. Unlike LLMs, ISAQ utilizes a deterministic token-matching system and a dynamic knowledge-parsing system to provide predictable, low-latency execution.
+A scalable, non-generative intent engine designed for local-first automation. Unlike LLMs, ISAAC utilizes a deterministic token-matching system and a dynamic knowledge-parsing system to provide predictable, low-latency execution.
 
 * **Dyno-Modules**: Hot-swappable JSON knowledge shards that can be prioritized in real-time. 
 * **Lexical Expansion**: Built-in support for WordNet synonyms and fuzzy string matching for natural interaction.
@@ -13,14 +22,14 @@ A scalable, non-generative intent engine designed for local-first automation. Un
 ## **How It Works**
 
 1. **Lexical Tokenization**: Raw speech is cleaned of "stop words" and passed through a stemming algorithm to isolate root meanings.  
-2. **Context Detection**: If a dynamic module name is mentioned, ISAQ applies a multiplier to all intents within that specific shard.
+2. **Context Detection**: If a dynamic module name is mentioned, ISAAC applies a multiplier to all intents within that specific shard.
 3. **Lexical Fallback**: If an exact match fails, the engine re-routes the query using fuzzy matching or WordNet Synonyms to find similar words.  
-4. **Command Execution**: Upon intent confirmation, ISAQ executes the associated py: (Python) or url: (Web) payload and finalizes the output.
+4. **Command Execution**: Upon intent confirmation, ISAAC executes the associated py: (Python) or url: (Web) payload and finalizes the output.
 
 ## **Project Structure**
 ```
 .  
-├── isaq\_v4\_2.py          \# Primary Deterministic Engine  
+├── isaac_main.py          \# Primary Deterministic Engine  
 ├── README.md              \# Introduction & Guidelines
 └── braindata/             \# Knowledge Directory  
     ├── basedata.json      \# Core System Intents  
@@ -29,7 +38,7 @@ A scalable, non-generative intent engine designed for local-first automation. Un
 
 ## **Creating Data Modules**
 
-Scaling ISAQ is as simple as adding a new .json file to the braindata/ folder.  
+Scaling ISAAC is as simple as adding a new .json file to the braindata/ folder.  
 ```
   {  
     "uid": "search\_query\_01",  
