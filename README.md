@@ -1,5 +1,8 @@
+<img width="852" height="357" alt="isaq" src="https://github.com/user-attachments/assets/b4190fb3-980b-437d-bd63-f78ed1004c95" />
+
 # **ISAQ: Deterministic Dyno-Module Agent**
 
+---
 A scalable, non-generative intent engine designed for local-first automation. Unlike LLMs, ISAQ utilizes a deterministic token-matching system and a dynamic knowledge-parsing system to provide predictable, low-latency execution.
 
 * **Dyno-Modules**: Hot-swappable JSON knowledge shards that can be prioritized in real-time. 
