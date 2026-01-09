@@ -1,5 +1,5 @@
 """
-ISAQ - Deterministic Dyno-Module Agent
+ISAAC - Deterministic Dyno-Module Agent
 Version 0.4.2
 """
 
@@ -252,18 +252,18 @@ class SpeechSystem:
 # ============================================================================
 def print_banner(module_count, extra_modules):
     """Display ASCII art banner and status"""
-    banner = rf"""
-╔══════════════════════════════════════════════════════════╗
-║                                                          ║
-║                 --.-- .-.   .    .--.                    ║
-║                   |  (   ) / \  :    :                   ║
-║                   |   `-. /___\ |    |                   ║
-║                   |  (   )     \:  ( ;                   ║
-║                 --'-- `-'       ``--`-                   ║
-║                                                          ║
-║          Deterministic Dyno-Module Agent v4.2.3          ║
-║                                                          ║
-╚══════════════════════════════════════════════════════════╝
+    banner = f"""
+
+8888888 .d8888b.        d8888        d8888  .d8888b. 
+  888  d88P  Y88b      d88888       d88888 d88P  Y88b
+  888  Y88b.          d88P888      d88P888 888    888
+  888   "Y888b.      d88P 888     d88P 888 888       
+  888      "Y88b.   d88P  888    d88P  888 888       
+  888        "888  d88P   888   d88P   888 888    888
+  888  Y88b  d88P d8888888888  d8888888888 Y88b  d88P
+8888888 "Y8888P" d88P     888 d88P     888  "Y8888P" 
+
+    * Deterministic Dyno-Module Agent v4.2.3
 
     Core Knowledge: {module_count} entries
     Dynamic Modules: {len(extra_modules)} detected ({', '.join(extra_modules.keys()) if extra_modules else 'None'})
