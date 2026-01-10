@@ -1,6 +1,6 @@
 """
 ISAAC - Deterministic Dyno-Module Agent
-Version 0.4.2
+Version 0.5.0
 """
 
 import asyncio
@@ -48,180 +48,399 @@ USER_NAME = "User"
 WAKE_WORDS = ["computer", "isaac"]
 
 # Tuning Parameters
-MODULE_PRIORITY_MULTIPLIER = 1.5  # Boosts score for dynamic module matches
-RECOGNITION_ACCURACY_CALIBRATION = 1.2  # Seconds to listen to room noise
+MODULE_PRIORITY_BOOST = 3.0  # Dynamic modules get 3x priority
+UNIQUE_WORD_BONUS = 1.8      # Bonus for words that uniquely match one entry
+RECOGNITION_ACCURACY_CALIBRATION = 1.2
+
+# ZORK-inspired action verbs (VERB-NOUN parsing)
+ACTION_VERBS = {
+    "open", "close", "search", "find", "look", "get", "take", 
+    "show", "display", "play", "stop", "start", "run", "execute",
+    "tell", "say", "speak", "explain", "describe", "define"
+}
 
 BYPASS_WORDS = {"how", "who", "what", "when", "where", "why", "time", "date", "help", "joke"}
-STOP_WORDS = {
-    "the", "is", "at", "which", "on", "a", "an", "do", "does", "did",
-    "my", "your", "to", "for", "with", "it", "of", "can",
-    "please", "could", "would", "me", "i", "want", "now", "about",
-    "very", "so", "like", "just", "really", "much", "some", "this",
-    "that", "there", "if", "because", "right", "think", "know"
-}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BRAIN_DIR = os.path.join(BASE_DIR, "braindata")
 GLOBAL_DATA_FILE = os.path.join(BRAIN_DIR, "basedata.json")
+BRIDGE_DATA_FILE = os.path.join(BRAIN_DIR, "bridgedata.json")
 
 if not os.path.exists(BRAIN_DIR):
     os.makedirs(BRAIN_DIR)
 
 # ============================================================================
-# SIMPLE BRAIN - MODULE PRIORITY & FUZZY MATCHING
+# BRAIN ENGINE
+# Inspired by: Google Assistant, Alexa, and ZORK's text parser
 # ============================================================================
-class SimpleBrain:
+class SystemBrain:
+    """
+    - Token-based matching (like ZORK)
+    - Priority scoring (like Alexa)
+    - Bridge-based module loading (like Google Assistant skills)
+    """
+    
     def __init__(self):
         self.name = AGENT_NAME
         self.username = USER_NAME
         self.wake_words = WAKE_WORDS
-        self.base_knowledge = []
-        self.recent_responses = []
-        self.load_knowledge()
+        
+        # Knowledge storage
+        self.core_knowledge = []      # Base commands
+        self.module_bridge = {}       # Module keyword mappings
+        self.loaded_modules = {}      # Cached module data
+        
+        # Anti-repetition
+        self.recent_command_ids = []
+        
+        self.load_core_knowledge()
+        self.load_bridge_data()
     
-    def load_knowledge(self):
+    def load_core_knowledge(self):
+        """Load base knowledge from basedata.json"""
         if not os.path.exists(GLOBAL_DATA_FILE):
-            print(f"Warning: Base knowledge file not found at {GLOBAL_DATA_FILE}")
+            print(f"Warning: Base knowledge file not found")
             return
+        
         try:
             with open(GLOBAL_DATA_FILE, 'r', encoding='utf-8') as f:
-                self.base_knowledge = json.load(f)
-            # Tag base knowledge as non-priority
-            for entry in self.base_knowledge:
-                entry['_is_module'] = False
-            print(f"Loaded {len(self.base_knowledge)} core knowledge entries")
+                self.core_knowledge = json.load(f)
         except Exception as e:
-            print(f"Error loading knowledge: {e}")
-
-    def get_available_modules(self):
-        modules = {}
-        for file in glob.glob(os.path.join(BRAIN_DIR, "*.json")):
-            name = os.path.basename(file).replace(".json", "").lower()
-            if name != "basedata":
-                modules[name] = file
-        return modules
-
-    def load_module_data(self, module_path):
+            print(f"Error loading core knowledge: {e}")
+    
+    def load_bridge_data(self):
+        """
+        Load bridgedata.json which maps keywords to module files
+        Format: [{"keywords": ["csharp", "c#"], "module": "csharp_module.json"}, ...]
+        """
+        if not os.path.exists(BRIDGE_DATA_FILE):
+            print("No bridge data found - modules disabled")
+            return
+        
+        try:
+            with open(BRIDGE_DATA_FILE, 'r', encoding='utf-8') as f:
+                bridges = json.load(f)
+            
+            # Track available modules
+            available_modules = set()
+            
+            for bridge in bridges:
+                keywords = bridge.get("keywords", [])
+                module_file = bridge.get("module", "")
+                
+                if module_file:
+                    # Check if module file actually exists
+                    module_path = os.path.join(BRAIN_DIR, module_file)
+                    if os.path.exists(module_path):
+                        available_modules.add(module_file)
+                    
+                    for keyword in keywords:
+                        self.module_bridge[keyword.lower()] = module_file
+        except Exception as e:
+            print(f"Error loading bridge data: {e}")
+    
+    def load_module(self, module_filename):
+        """Load a specific module file and cache it"""
+        if module_filename in self.loaded_modules:
+            return self.loaded_modules[module_filename]
+        
+        module_path = os.path.join(BRAIN_DIR, module_filename)
+        if not os.path.exists(module_path):
+            return []
+        
         try:
             with open(module_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                if isinstance(data, list):
-                    for entry in data:
-                        entry['_is_module'] = True # Tag as priority module
-                    return data
-                return []
+            
+            if isinstance(data, list):
+                self.loaded_modules[module_filename] = data
+                return data
         except Exception as e:
-            print(f"Error loading module {module_path}: {e}")
-            return []
+            print(f"Error loading module {module_filename}: {e}")
+        
+        return []
     
-    def clean_text(self, text):
+    def tokenize(self, text):
+        """
+        Enhanced ZORK-style tokenization with verb detection
+        Returns: (tokens, action_verb)
+        """
         words = re.findall(r'\b\w+\b', text.lower())
-        return [w for w in words if w not in STOP_WORDS and w not in self.wake_words and len(w) > 1]
+        
+        # Identify action verb (first verb found)
+        action_verb = None
+        for word in words:
+            if word in ACTION_VERBS:
+                action_verb = word
+                break
+        
+        # Remove stop words, wake words, and single letters
+        meaningful = [
+            w for w in words 
+            if w not in self.wake_words 
+            and len(w) > 1
+        ]
+        
+        return meaningful, action_verb
     
-    def stem_word(self, word):
-        if len(word) <= 3: return word
-        for suffix in ['ing', 'ly', 'ed', 'es', 's', 'er']:
+    def stem(self, word):
+        """Simple stemming for matching variations"""
+        if len(word) <= 3:
+            return word
+        
+        for suffix in ['ing', 'ly', 'ed', 'es', 's', 'er', 'est']:
             if word.endswith(suffix) and len(word) > len(suffix) + 2:
                 return word[:-len(suffix)]
-        return word
-
-    def find_closest_command_word(self, user_word, knowledge_pool):
-        valid_tokens = set()
-        for entry in knowledge_pool:
-            tokens = entry.get("tokens", [])
-            if isinstance(tokens, str): valid_tokens.add(tokens.lower())
-            else:
-                for t in tokens: valid_tokens.add(t.lower())
         
+        return word
+    
+    def extract_subject(self, user_tokens, matched_tokens):
+        if not matched_tokens or not user_tokens:
+            return "that"
+        
+        # Find the position of the last matched token in user input
+        last_match_index = -1
+        for token in matched_tokens:
+            token_stem = self.stem(token)
+            for i, user_word in enumerate(user_tokens):
+                if self.stem(user_word) == token_stem:
+                    last_match_index = max(last_match_index, i)
+        
+        # Subject = words AFTER the highest-value matched token
+        if last_match_index >= 0 and last_match_index < len(user_tokens) - 1:
+            subject_words = user_tokens[last_match_index + 1:]
+            return " ".join(subject_words)
+        
+        return "that"
+    
+    def score_entry(self, user_tokens, entry, is_module=False, action_verb=None, word_usage_map=None):
+        # Scoring: Matches × priority × module_boost × verb_bonus × unique_word_bonus
+        entry_tokens = entry.get("tokens", [])
+        if isinstance(entry_tokens, str):
+            entry_tokens = [entry_tokens]
+        
+        matches = 0
+        matched_token_list = []
+        verb_bonus = 0
+        unique_bonus = 1.0
+        
+        if action_verb:
+            for token in entry_tokens:
+                if self.stem(action_verb) == self.stem(token):
+                    verb_bonus = 0.5
+                    break
+        
+        for user_word in user_tokens:
+            user_stem = self.stem(user_word)
+            
+            for token in entry_tokens:
+                token_stem = self.stem(token)
+                
+                if user_stem == token_stem:
+                    matches += 1
+                    matched_token_list.append(token)
+                    
+                    # Check if this word uniquely matches only this entry
+                    if word_usage_map and word_usage_map.get(user_word) == 1:
+                        unique_bonus = UNIQUE_WORD_BONUS
+                    break
+        
+        if matches == 0:
+            return 0, []
+        
+        priority = entry.get("val", 1.0)
+        module_boost = MODULE_PRIORITY_BOOST if is_module else 1.0
+        
+        score = matches * priority * module_boost * (1.0 + verb_bonus) * unique_bonus
+        
+        return score, matched_token_list
+    
+    def fuzzy_match(self, word, valid_tokens):
+        # Find close matches using difflib and NLTK synonyms
+
+        # First: NLTK synonyms
         if HAS_NLTK:
-            synsets = wordnet.synsets(user_word)
+            synsets = wordnet.synsets(word)
             for syn in synsets:
                 for lemma in syn.lemmas():
-                    name = lemma.name().lower().replace('_', ' ')
-                    if name in valid_tokens: return name
-
-        matches = difflib.get_close_matches(user_word, list(valid_tokens), n=1, cutoff=0.7)
+                    synonym = lemma.name().lower().replace('_', ' ')
+                    if synonym in valid_tokens:
+                        return synonym
+        
+        # Fall back to fuzzy-matching
+        matches = difflib.get_close_matches(word, valid_tokens, n=1, cutoff=0.75)
         return matches[0] if matches else None
     
     def process_input(self, text):
-        user_words = self.clean_text(text)
-        if not user_words:
-            return f"I'm sorry {self.username}, I didn't catch that."
-
-        current_knowledge = self.base_knowledge.copy()
-        available_modules = self.get_available_modules()
+        """
+        Enhanced processing with unique word detection:
+        1. Tokenize and identify action verbs
+        2. Load relevant dynamic modules (priority boost)
+        3. Build word usage map for unique word detection
+        4. Score entries (modules get 3x, unique words get 1.8x)
+        5. Pick best match and format response
+        """
         
-        # Check for module keywords in user text
-        for mod_name, mod_path in available_modules.items():
-            if mod_name in text.lower():
-                mod_data = self.load_module_data(mod_path)
-                current_knowledge.extend(mod_data)
-
-        scored_entries = []
-        for entry in current_knowledge:
-            if not isinstance(entry, dict): continue
-            entry_tokens = entry.get("tokens", [])
-            if isinstance(entry_tokens, str): entry_tokens = [entry_tokens]
+        user_tokens, action_verb = self.tokenize(text)
+        original_text_lower = text.lower()
+        
+        if not user_tokens:
+            return f"I'm sorry {self.username}, I didn't catch that."
+        
+        # Step 2: Build knowledge pool (Core always included(static), modules prioritized(dynamic))
+        knowledge_pool = []
+        
+        for entry in self.core_knowledge:
+            knowledge_pool.append((entry, False))
+        
+        modules_loaded = set()
+        for keyword, module_file in self.module_bridge.items():
+            if keyword in original_text_lower:
+                module_data = self.load_module(module_file)
+                if module_data and module_file not in modules_loaded:
+                    modules_loaded.add(module_file)
+                    for entry in module_data:
+                        knowledge_pool.append((entry, True))
+        
+        # Step 3: Build word usage map (Amount of entries each word matches with)
+        word_usage_map = {}
+        for user_word in user_tokens:
+            user_stem = self.stem(user_word)
+            usage_count = 0
             
-            matches = 0
-            for user_word in user_words:
-                user_stem = self.stem_word(user_word)
+            for entry, _ in knowledge_pool:
+                entry_tokens = entry.get("tokens", [])
+                if isinstance(entry_tokens, str):
+                    entry_tokens = [entry_tokens]
+                
                 for token in entry_tokens:
-                    token_stem = self.stem_word(token)
-                    if user_stem == token_stem:
-                        matches += 1
+                    if user_stem == self.stem(token):
+                        usage_count += 1
                         break
             
-            if matches > 0:
-                # APPLY PRIORITY: Multiplier if the entry came from a dynamic module
-                multiplier = MODULE_PRIORITY_MULTIPLIER if entry.get('_is_module') else 1.0
-                score = (matches * entry.get("val", 1.0)) * multiplier
-                scored_entries.append((score, matches, entry))
+            word_usage_map[user_word] = usage_count
         
+        # Step 4: Score entries with word awareness
+        scored_entries = []
+        
+        for entry, is_module in knowledge_pool:
+            score, matched_tokens = self.score_entry(user_tokens, entry, is_module, action_verb, word_usage_map)
+            
+            if score > 0:
+                scored_entries.append({
+                    'score': score,
+                    'entry': entry,
+                    'matched_tokens': matched_tokens,
+                    'is_module': is_module
+                })
+        
+        # Step 5: No matches? Try fuzzy matching
         if not scored_entries:
-            for word in user_words:
-                correction = self.find_closest_command_word(word, current_knowledge)
+            # Build list of all valid tokens
+            all_valid_tokens = set()
+            for entry, _ in knowledge_pool:
+                tokens = entry.get("tokens", [])
+                if isinstance(tokens, str):
+                    all_valid_tokens.add(tokens.lower())
+                else:
+                    for t in tokens:
+                        all_valid_tokens.add(t.lower())
+            
+            # Try to find corrections
+            for word in user_tokens:
+                correction = self.fuzzy_match(word, all_valid_tokens)
                 if correction:
-                    return self.process_input(text.lower().replace(word, correction))
+                    corrected_text = text.lower().replace(word, correction)
+                    return self.process_input(corrected_text)
+            
             return "I'm not sure I understand. Could you rephrase that?"
         
-        scored_entries.sort(key=lambda x: (x[0], x[1]), reverse=True)
-        best_entry = scored_entries[0][2]
+        # Step 6: Sort by score (highest first)
+        scored_entries.sort(key=lambda x: x['score'], reverse=True)
         
-        # Avoid repeats
+        # Step 7: Pick best match (avoid recent repeats)
+        best = scored_entries[0]
+        
         if len(scored_entries) > 1:
-            recent_uids = [e.get("uid") for e in self.recent_responses[-3:] if e.get("uid")]
-            if best_entry.get("uid") in recent_uids:
-                for _, _, entry in scored_entries[1:]:
-                    if entry.get("uid") not in recent_uids:
-                        best_entry = entry
-                        break
+            for candidate in scored_entries:
+                entry_id = str(candidate['entry'])  # Use entire entry as ID
+                
+                if entry_id not in self.recent_command_ids:
+                    best = candidate
+                    break
         
-        self.recent_responses.append(best_entry)
-        if len(self.recent_responses) > 5: self.recent_responses.pop(0)
+        # Track this command
+        entry_id = str(best['entry'])
+        self.recent_command_ids.append(entry_id)
+        if len(self.recent_command_ids) > 5:
+            self.recent_command_ids.pop(0)
         
-        response_text = best_entry.get("resp", "I'm not sure how to respond.")
-        entry_tokens = best_entry.get("tokens", [])
-        subject_words = [w for w in user_words if not any(self.stem_word(w) == self.stem_word(t) for t in entry_tokens)]
-        subject = " ".join(subject_words) if subject_words else "that"
+        # Step 8: Extract subject (AFTER matched tokens)
+        subject = self.extract_subject(user_tokens, best['matched_tokens'])
         
-        response_text = response_text.replace("{subject}", subject).replace("{name}", self.name).replace("{username}", self.username)
+        # Step 9: Format response
+        response_text = best['entry'].get("resp", "I'm not sure how to respond.")
+        response_text = response_text.replace("{subject}", subject)
+        response_text = response_text.replace("{name}", self.name)
+        response_text = response_text.replace("{username}", self.username)
         
-        command = best_entry.get("cmd")
-        return self.execute_command(response_text, command, subject) if command else response_text
+        # Step 10: Execute command if present
+        command = best['entry'].get("cmd")
+        if command:
+            return self.execute_command(response_text, command, subject)
+        
+        return response_text
     
     def execute_command(self, text, cmd, subject):
+        """Execute URL or Python commands"""
+        if not cmd:
+            return text
+        
+        # URL commands
         if cmd.startswith("url:"):
-            url = cmd.replace("url:", "").strip().replace("{subject}", subject.replace(" ", "+"))
+            url = cmd.replace("url:", "").strip()
+            url = url.replace("{subject}", subject.replace(" ", "+"))
+            
+            if "{subject}" in cmd and subject == "that":
+                return "Please specify what you want me to search for."
+            
             webbrowser.open(url)
             return f"{text} [Opening in browser]"
+        
+        # Python evaluation
         if cmd.startswith("py:"):
             try:
                 code = cmd.replace("py:", "").strip()
-                result = eval(code, {"datetime": datetime, "subject": subject, "random": random, "time": time})
+                result = eval(code, {
+                    "datetime": datetime,
+                    "subject": subject,
+                    "random": random,
+                    "time": time
+                })
                 return f"{text} {result}"
-            except Exception as e: return f"{text} [Error: {e}]"
+            except Exception as e:
+                return f"{text} [Error: {e}]"
+        
         return text
+    
+    def get_module_stats(self):
+        # Module statistic for start banner
+        # Count unique module files in bridge
+        available_modules = set(self.module_bridge.values())
+        
+        # Verify they actually exist
+        existing_modules = []
+        for module_file in available_modules:
+            module_path = os.path.join(BRAIN_DIR, module_file)
+            if os.path.exists(module_path):
+                existing_modules.append(module_file)
+        
+        return {
+            'bridge_keywords': len(self.module_bridge),
+            'loaded_modules': len(self.loaded_modules),
+            'available_modules': len(existing_modules),
+            'module_names': existing_modules
+        }
 
 # ============================================================================
 # SPEECH SYSTEM
@@ -229,29 +448,46 @@ class SimpleBrain:
 class SpeechSystem:
     def __init__(self):
         pygame.mixer.init()
+    
     async def speak(self, text):
-        if not text.strip(): return
+        if not text.strip():
+            return
+        
         filename = os.path.join(BASE_DIR, f"speech_{int(time.time() * 1000)}.mp3")
+        
         try:
             await edge_tts.Communicate(text, "en-US-AndrewNeural").save(filename)
             pygame.mixer.music.load(filename)
             pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy(): await asyncio.sleep(0.1)
+            
+            while pygame.mixer.music.get_busy():
+                await asyncio.sleep(0.1)
+            
             pygame.mixer.music.unload()
-            await asyncio.sleep(0.1)
-            if os.path.exists(filename): os.remove(filename)
-        except Exception as e: print(f"Speech error: {e}")
+            await asyncio.sleep(0.2)  # Increased delay for better cleanup
+            
+            if os.path.exists(filename):
+                os.remove(filename)
+        except Exception as e:
+            print(f"Speech error: {e}")
+    
     def cleanup(self):
         for f in glob.glob(os.path.join(BASE_DIR, "speech_*.mp3")):
-            try: os.remove(f)
-            except: pass
-    def shutdown(self): pygame.mixer.quit()
+            try:
+                os.remove(f)
+            except:
+                pass
+    
+    def shutdown(self):
+        pygame.mixer.quit()
 
 # ============================================================================
 # UI BANNER
 # ============================================================================
-def print_banner(module_count, extra_modules):
-    """Display ASCII art banner and status"""
+def print_banner(core_count, module_stats):
+    # Display ASCII art banner & status
+    module_list = ', '.join(module_stats['module_names']) if module_stats['module_names'] else 'None'
+    
     banner = f"""
 
 8888888 .d8888b.        d8888        d8888  .d8888b. 
@@ -263,10 +499,12 @@ def print_banner(module_count, extra_modules):
   888  Y88b  d88P d8888888888  d8888888888 Y88b  d88P
 8888888 "Y8888P" d88P     888 d88P     888  "Y8888P" 
 
-    * Deterministic Dyno-Module Agent v4.2.3
+    * Deterministic Dyno-Module Agent v0.5.0
 
-    Core Knowledge: {module_count} entries
-    Dynamic Modules: {len(extra_modules)} detected ({', '.join(extra_modules.keys()) if extra_modules else 'None'})
+    Core Knowledge: {core_count} entries
+    Bridge Keywords: {module_stats['bridge_keywords']} available
+    Available Modules: {module_stats['available_modules']} ({module_list})
+    Currently Loaded: {module_stats['loaded_modules']} active
     Wake Words: {', '.join(WAKE_WORDS)}
     
     Ready for voice commands...
@@ -277,34 +515,43 @@ def print_banner(module_count, extra_modules):
 # MAIN APPLICATION
 # ============================================================================
 async def main():
-    brain = SimpleBrain()
+    brain = SystemBrain()
     speech = SpeechSystem()
     recognizer = sr.Recognizer()
     
-    # Enhanced Speech Tuning
+    # Speech recognition settings
     recognizer.dynamic_energy_threshold = True
-    recognizer.energy_threshold = 4000 
+    recognizer.energy_threshold = 300  # Sensitivity
+    recognizer.pause_threshold = 1.0   # Seconds of pause before processing
+    recognizer.phrase_threshold = 0.2   # Audio density before considering speech
+    recognizer.non_speaking_duration = 0.5  # How long to wait for pause
     
     microphone = sr.Microphone()
     speech.cleanup()
     
-    # Restored Banner Functionality
-    print_banner(len(brain.base_knowledge), brain.get_available_modules())
+    # Display banner
+    print_banner(len(brain.core_knowledge), brain.get_module_stats())
     await speech.speak(f"{brain.name} online. Core knowledge and dynamic modules ready.")
     
+    print("\n[SYSTEM] Calibrating microphone...")
+    
+    # Main loop
     while True:
         with microphone as source:
             try:
-                # Improved calibration
-                recognizer.adjust_for_ambient_noise(source, duration=RECOGNITION_ACCURACY_CALIBRATION)
+                recognizer.adjust_for_ambient_noise(source, duration=1.5)
                 
-                audio = recognizer.listen(source, timeout=None, phrase_time_limit=6)
+                audio = recognizer.listen(source, timeout=None, phrase_time_limit=10)
                 raw_text = recognizer.recognize_google(audio).lower()
                 
                 if any(wake in raw_text for wake in WAKE_WORDS):
-                    winsound.Beep(600, 80)
-                    # Listening for the command with slightly longer limits
-                    command_audio = recognizer.listen(source, timeout=6, phrase_time_limit=10)
+                    winsound.Beep(600, 100)
+                    
+                    command_audio = recognizer.listen(
+                        source, 
+                        timeout=8,
+                        phrase_time_limit=15
+                    )
                     command_text = recognizer.recognize_google(command_audio)
                     
                     print(f"\n[USER]: {command_text}")
@@ -312,11 +559,14 @@ async def main():
                     print(f"[{brain.name.upper()}]: {response}\n")
                     await speech.speak(response)
                     
-            except (sr.WaitTimeoutError, sr.UnknownValueError): continue
+            except (sr.WaitTimeoutError, sr.UnknownValueError):
+                continue
             except Exception as e:
                 print(f"Error: {e}")
                 continue
 
 if __name__ == "__main__":
-    try: asyncio.run(main())
-    except KeyboardInterrupt: sys.exit(0)
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        sys.exit(0)
