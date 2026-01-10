@@ -9,104 +9,273 @@
 8888888 "Y8888P" d88P     888 d88P     888  "Y8888P" 
 ```
 # **ISAAC: Deterministic Dyno-Module Agent**
-### **Version 0.5.0**
 
-<<<<<<< HEAD
-A scalable, non-generative intent engine designed for local-first automation. Unlike LLMs, ISAAC utilizes a deterministic token-matching system and a dynamic knowledge-parsing system to provide predictable, low-latency execution.
+Modular, non-generative intent engine designed for local-first automation. Unlike LLMs, ISAAC utilizes a deterministic token-matching system with dynamic knowledge modules, allowing the expansion of data.
 
-* **Dyno-Modules**: Hot-swappable JSON knowledge shards that can be prioritized in real-time. 
-* **Lexical Expansion**: Built-in support for WordNet synonyms and fuzzy string matching for natural interaction.
-* **Contextual Weighting**: Adaptive scoring multipliers based on active module detection.
-* **Zero-Cloud Privacy**: All processing (excluding edge-TTS/STT) happens on your local hardware.
-=======
-ISAAC is a scalable, non-generative intent engine designed for local-first automation. Unlike traditional LLMs, ISAAC utilizes a **deterministic token-matching system** & dynamic knowledge-parsing system to provide predictable, low-latency execution with zero-cloud privacy.
+## **Key Features**
 
-## **Core Features**
-* **Dyno-Modules**: Hot-swappable JSON knowledge shards triggered by specific keywords.
-* **Action-Verb Detection**: Uses ZORK-style parsing (e.g., *open, find, tell*) to prioritize specific intents.
-* **Weighted Scoring**: A scoring algorithm that favors unique matches and active modules.
-* **Lexical Fallback**: Integrated support for **NLTK WordNet** synonyms and **Difflib** fuzzy matching.
-* **Edge-TTS**: High-quality neural voice output (en-US-AndrewNeural) with local playback.
+* **Dyno-Modules**: Dynamic JSON knowledge modules that load on-demand when specific keywords are detected. (Specific keywords are stored in bridge data file.)
+* **Lexical Expansion**: Built-in support for WordNet synonyms and fuzzy string matching for natural interaction without training data.
+* **Contextual Weighting**: Layered scoring system that considers token matches, module priority, action verbs, and word uniqueness.
+* **Platform Independent Core**: The engine should works on Windows, macOS, and Linux with zero platform-specific dependencies.
 
----
->>>>>>> parent of 1543d38 (Revise README for overhauled system.)
+## **How It Works**
 
-## **The Scoring Engine**
-ISAAC calculates the "Best Match" using a multi-pass scoring algorithm. It doesn't just look for words; it calculates relevance based on the following formula:
+### **Processing Pipeline**
 
-<<<<<<< HEAD
-1. **Lexical Tokenization**: Raw speech is cleaned of "stop words" and passed through a stemming algorithm to isolate root meanings.  
-2. **Context Detection**: If a dynamic module name is mentioned, ISAAC applies a multiplier to all intents within that specific shard.
-3. **Lexical Fallback**: If an exact match fails, the engine re-routes the query using fuzzy matching or WordNet Synonyms to find similar words.  
-4. **Command Execution**: Upon intent confirmation, ISAAC executes the associated py: (Python) or url: (Web) payload and finalizes the output.
+1. **Tokenization & Verb Detection**: User input is cleaned of stop words and analyzed for action verbs (inspired by classic text adventure parsers like ZORK).
 
-## **Project Structure**
-```
-.  
-├── isaac\_v4\_2.py          \# Primary Deterministic Engine  
-├── README.md              \# Documentation  
-└── braindata/             \# Knowledge Directory  
-    ├── basedata.json      \# Core System Intents  
-    └── \*.json             \# Dynamic User Modules
-```
+2. **Module Loading**: If you have keywords like "csharp" or "python" in your bridge data and detected in the input, the corresponding knowledge module is loaded from the bridge system and given priority.
 
-## **Creating Data Modules**
+4. **Scoring Algorithm**: Each knowledge entry receives a score based on:
 
-Scaling ISAAC is as simple as adding a new .json file to the braindata/ folder.  
-```
-  {  
-    "uid": "search\_query\_01",  
-    "cat": "web\_search",  
-    "tokens": \["find", "search", "lookup"\],  
-    "val": 1.0,  
-    "resp": "Searching for {subject}...",  
-    "cmd": "url:\[https://www.google.com/search?q=\](https://www.google.com/search?q=){subject}" (Optional)
-  }  
-```
+   ```
+   score = matches × priority × module_boost × verb_bonus × unique_bonus
+   
+   Where:
+   - matches: Number of tokens that match
+   - priority: Entry's "val" field (1.0-5.0)
+   - module_boost: 3.0 if from dynamic module, 1.0 if core
+   - verb_bonus: +0.5 if action verb matches
+   - unique_bonus: 1.8 if word uniquely matches this entry
+   ```
 
-### **Command Syntax Reference**
+5. **Subject Extraction**: The system intelligently extracts the subject by taking all words **after** the last matched command token.
+   - "open YouTube Brackeys" → subject = "Brackeys"
+   - "search for python tutorials" → subject = "tutorials"
 
-| Prefix | Description | Example |
-| :---- | :---- | :---- |
-| py: | Executes local Python logic | py:datetime.now().hour |
-| url: | Opens system browser | url:https://github.com |
-| {subject} | Captures non-token words | Searching for {subject} |
-| {username} | Current user name | Hello, {username} |
-=======
-$$Score = Matches \times Priority \times ModuleBoost \times (1.0 + VerbBonus) \times UniqueBonus$$
-
-### **Scoring Multipliers**
-| Multiplier | Value | Description |
-| :--- | :--- | :--- |
-| **Module Priority** | **3.0x** | Applied if the intent is found within a dynamically loaded module. |
-| **Unique Word Bonus**| **1.8x** | Applied if a user's word uniquely identifies only one specific intent. |
-| **Verb Bonus** | **+0.5** | Applied if the user's sentence matches a recognized Action Verb. |
-| **Fuzzy Threshold** | **0.75** | The minimum similarity required for `difflib` to suggest a correction. |
-
----
+6. **Command Execution**: Upon intent confirmation, ISAAC executes the associated `py:` (Python eval) or `url:` (web browser) command.
 
 ## **Project Structure**
-The engine relies on the `braindata/` directory to function. The **Bridge** file acts as the router for all dynamic modules.
 
-```text
-.  
-├── main.py                # Primary Assistant Engine
-├── README.md              # Documentation  
-└── braindata/             # Knowledge Directory  
-    ├── basedata.json      # Core System Intents (Static)
-    ├── bridgedata.json    # Module Mappings (Keywords -> Files)
-    └── *.json             # Dynamic User Modules (e.g., csharp_module.json)
 ```
----
-## **The Bridge System**
-To maintain low latency, ISAAC only loads modules when relevant keywords are detected in the user's input. These relationships are defined in `bridgedata.json`:
+.
+├── isaac_core.py           # Core engine (platform-independent)
+├── voice_interpreter.py    # Voice interface example (Windows-focused)
+├── requirements.txt        # Dependencies
+├── README.md              # Documentation
+└── braindata/             # Knowledge directory
+    ├── basedata.json      # Core system intents (always loaded)
+    ├── bridgedata.json    # Module keyword mappings
+    └── *.json             # Dynamic knowledge modules
+```
 
+### **Architecture**
+
+**isaac_core.py** - The base processing engine. Zero platform-specific code, can be imported to any application with `import`
+
+**voice_interpreter.py** - Example implementation using speech recognition and TTS. Platform-specific audio libraries. (Download all libraries with `pip install`)
+
+**bridgedata.json** - Maps keywords to module files:
 ```json
 [
   {
-    "keywords": ["csharp", "coding", "programming"],
+    "keywords": ["csharp", "c#", "c sharp", "dotnet"],
     "module": "csharp_module.json"
   }
 ]
 ```
->>>>>>> parent of 1543d38 (Revise README for overhauled system.)
+
+This allows multiple trigger words to load the same module, and modules only load when needed.
+
+## **Installation**
+
+Single dependency. Works on any platform:
+(When nltk fails, falls back to fuzzy matching.)
+
+```bash
+pip install nltk
+python isaac_core.py
+```
+
+## **Creating Knowledge Modules**
+
+### **Basic Entry Structure**
+
+```json
+{
+  "tokens": ["search", "find", "google"],
+  "val": 3.0,
+  "resp": "Searching for {subject}",
+  "cmd": "url:https://www.google.com/search?q={subject}"
+}
+```
+
+### **Field Reference**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `tokens` | list/string | Yes | Words that trigger this entry. Stemming applied automatically. |
+| `val` | float | Yes | Priority multiplier (1.0-5.0). Higher = more priority when matched. |
+| `resp` | string | Yes | Response text. Supports `{subject}`, `{name}`, `{username}` placeholders. |
+| `cmd` | string | No | Command to execute. Prefix with `py:` or `url:`. |
+
+### **Command Syntax**
+
+| Prefix | Description | Example |
+|--------|-------------|---------|
+| `py:` | Executes Python code | `py:datetime.now().strftime('%I:%M %p')` |
+| `url:` | Opens system browser | `url:https://github.com/{subject}` |
+| `{subject}` | Extracted query subject | Words after matched tokens |
+| `{username}` | Current user name | Personalization |
+| `{name}` | Agent name | Self-reference |
+
+### **Example: Time Query**
+
+```json
+{
+  "tokens": ["time"],
+  "val": 5.0,
+  "resp": "The current time is",
+  "cmd": "py:datetime.now().strftime('%I:%M %p')"
+}
+```
+
+Input: "what's the time"
+- Matches: "time" token
+- Score: `1 match × 5.0 priority = 5.0`
+- Executes: Python datetime code
+- Output: "The current time is 02:34 PM"
+
+### **Example: YouTube Search**
+
+```json
+{
+  "tokens": ["youtube"],
+  "val": 4.5,
+  "resp": "Opening YouTube for {subject}",
+  "cmd": "url:https://www.youtube.com/results?search_query={subject}"
+}
+```
+
+Input: "open YouTube Brackeys"
+- Matches: "youtube" token
+- Subject: "Brackeys" (word after matched token)
+- Opens: `youtube.com/results?search_query=Brackeys`
+
+## **Creating Dynamic Modules**
+
+Modules are specialized knowledge files that load on-demand when their keywords are mentioned.
+
+### **Step 1: Create Custom Module File**
+
+Create `braindata/python_module.json`:
+
+```json
+[
+  {
+    "tokens": ["list", "python"],
+    "val": 3.0,
+    "resp": "Python lists: my_list = [1, 2, 3]. Access with my_list[0]. Methods: append(), remove(), len()"
+  },
+  {
+    "tokens": ["dictionary", "dict", "python"],
+    "val": 3.0,
+    "resp": "Python dicts: my_dict = {'key': 'value'}. Access: my_dict['key']. Methods: keys(), values(), items()"
+  }
+]
+```
+
+### **Step 2: Register in Bridge**
+
+Once a module is created, we need to tell Isaac when to call for these modules so we don't overload the system with all modules at once.
+
+Add to `braindata/bridgedata.json`:
+
+```json
+[
+  {
+    "keywords": ["python", "py"],
+    "module": "python_module.json"
+  }
+]
+```
+
+### **Step 3: Use**
+
+If the setup was done correctly, you will see the modules listed & everything should work correctly!
+
+Input: "how do I use python lists"
+- Detects: "python" keyword
+- Loads: `python_module.json` with 3x priority boost
+- Matches: "list" + "python" tokens
+- Score: `2 matches × 3.0 val × 3.0 module = 18.0`
+- Response: Python list syntax
+
+## **API Usage**
+
+### **Basic Integration**
+
+```python
+from isaac_core import IsaacCore
+
+# Initialize
+isaac = IsaacCore(brain_dir="./braindata")
+
+# Process text
+response = isaac.process("what time is it")
+print(response)  # "The current time is 02:34 PM"
+```
+
+### **Custom Configuration**
+
+```python
+isaac = IsaacCore(
+    brain_dir="./braindata",
+    agent_name="Jarvis",
+    user_name="Tony"
+)
+
+response = isaac.process("hello")
+# "Hello Tony. How can I assist?"
+```
+
+## **Advanced Configuration**
+
+### **Tuning Parameters**
+
+In `isaac_core.py`, adjust `Config` class:
+
+```python
+class Config:
+    MODULE_PRIORITY_BOOST = 3.0    # Multiplier for module entries
+    UNIQUE_WORD_BONUS = 1.8        # Boost for unique matches
+    
+    ACTION_VERBS = {
+        "open", "search", "find", "explain"
+        # Add custom action verbs
+    }
+```
+
+### **Custom Stemming**
+
+Modify the `stem()` method to add language-specific rules:
+
+```python
+def stem(self, word):
+    # Add custom suffixes for your language
+    for suffix in ['ing', 'ly', 'ed', 'es']:
+        if word.endswith(suffix):
+            return word[:-len(suffix)]
+    return word
+```
+
+## **Troubleshooting**
+
+### **"No matches found" for valid queries**
+
+- Check token spelling in your JSON files
+- Remember stemming: "searching" matches "search"
+- Verify `val` priority isn't too low (try 3.0+)
+
+### **Wrong intent selected**
+
+- Increase `val` for correct entry
+- Add more specific tokens
+- Use unique words that only appear in that entry
+
+### **Module not loading**
+
+- Verify keyword exists in `bridgedata.json`
+- Check module filename matches exactly
+- Ensure JSON is valid (use a validator)
