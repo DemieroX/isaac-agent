@@ -1,0 +1,112 @@
+[
+  {
+    "tokens": ["hello", "hi", "hey"],
+    "resp": "Hello {username}.",
+    "val": 1.2
+  },
+  {
+    "tokens": ["help", "can", "do"],
+    "resp": "I can search the web, open links, tell the time and date, do quick math, and fetch info.",
+    "val": 1.5
+  },
+
+  {
+    "tokens": ["time", "clock"],
+    "resp": "The time is",
+    "cmd": "py:datetime.now().strftime('%H:%M')",
+    "val": 3.5
+  },
+  {
+    "tokens": ["date", "today"],
+    "resp": "Today is",
+    "cmd": "py:datetime.now().strftime('%A, %B %d, %Y')",
+    "val": 3.2
+  },
+  {
+    "tokens": ["search", "google", "find"],
+    "resp": "Searching for {subject}.",
+    "cmd": "url:https://www.google.com/search?q={subject}",
+    "val": 2.6
+  },
+  {
+    "tokens": ["wiki", "wikipedia"],
+    "resp": "Opening Wikipedia for {subject}.",
+    "cmd": "url:https://en.wikipedia.org/wiki/{subject}",
+    "val": 2.4
+  },
+  {
+    "tokens": ["define", "meaning"],
+    "resp": "Looking up {subject}.",
+    "cmd": "url:https://www.google.com/search?q=define+{subject}",
+    "val": 2.3
+  },
+
+  {
+    "tokens": ["map", "where", "location"],
+    "resp": "Showing location for {subject}.",
+    "cmd": "url:https://www.google.com/maps/search/{subject}",
+    "val": 2.5
+  },
+  {
+    "tokens": ["weather", "forecast"],
+    "resp": "Checking weather for {subject}.",
+    "cmd": "url:https://www.google.com/search?q=weather+{subject}",
+    "val": 2.4
+  },
+
+  {
+    "tokens": ["youtube", "video", "watch"],
+    "resp": "Searching YouTube for {subject}.",
+    "cmd": "url:https://www.youtube.com/results?search_query={subject}",
+    "val": 2.2
+  },
+  {
+    "tokens": ["music", "song", "play"],
+    "resp": "Searching music for {subject}.",
+    "cmd": "url:https://music.youtube.com/search?q={subject}",
+    "val": 2.1
+  },
+
+  {
+    "tokens": ["calculate", "math"],
+    "resp": "Calculating {subject}.",
+    "cmd": "url:https://www.google.com/search?q={subject}",
+    "val": 2.0
+  },
+  {
+    "tokens": ["convert"],
+    "resp": "Converting {subject}.",
+    "cmd": "url:https://www.google.com/search?q=convert+{subject}",
+    "val": 2.0
+  },
+
+  {
+    "tokens": ["random", "number"],
+    "resp": "Random number:",
+    "cmd": "py:random.randint(1,100)",
+    "val": 1.8
+  },
+  {
+    "tokens": ["roll", "dice"],
+    "resp": "You rolled",
+    "cmd": "py:random.randint(1,6)",
+    "val": 1.8
+  },
+  {
+    "tokens": ["flip", "coin"],
+    "resp": "Coin result:",
+    "cmd": "py:'Heads' if random.randint(0,1)==0 else 'Tails'",
+    "val": 1.8
+  },
+
+  {
+    "tokens": ["who", "are"],
+    "resp": "I'm {name}. Your local assistant.",
+    "val": 1.3
+  },
+  {
+    "tokens": ["bye", "exit", "quit"],
+    "resp": "Goodbye {username}.",
+    "val": 4.0
+  }
+]

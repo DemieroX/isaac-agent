@@ -1,0 +1,58 @@
+[
+  { "uid": "cs_what_is", "cat": "csharp_basics", "tokens": ["what", "csharp", "c#"], "val": 2.2,
+    "resp": "C# is a modern, object-oriented programming language developed by Microsoft. It's used for building Windows apps, games with Unity, web services, and more.", "cmd": null },
+
+  { "uid": "cs_data_types", "cat": "csharp_basics", "tokens": ["data", "types", "csharp"], "val": 2.6,
+    "resp": "Main C# data types: int (numbers), string (text), bool (true/false), double/float (decimals), char (single character), and var (inferred type).", "cmd": null },
+
+  { "uid": "cs_variables", "cat": "csharp_basics", "tokens": ["variable", "declare", "csharp"], "val": 2.7,
+    "resp": "Declare variables in C# like: int age = 25; string name = \"John\"; bool isActive = true; Use var for type inference: var count = 10;", "cmd": null },
+
+  { "uid": "cs_strings", "cat": "csharp_basics", "tokens": ["string", "text", "csharp"], "val": 2.7,
+    "resp": "C# strings: Use double quotes \"text\". Common methods: Length, ToUpper(), ToLower(), Contains(), Substring(). String interpolation: $\"Hello {name}\"", "cmd": null },
+
+  { "uid": "cs_arrays", "cat": "csharp_collections", "tokens": ["array", "csharp"], "val": 2.8,
+    "resp": "C# arrays: int[] numbers = new int[5]; or int[] nums = {1,2,3,4,5}; Access with index: nums[0]. Property: Length.", "cmd": null },
+
+  { "uid": "cs_lists", "cat": "csharp_collections", "tokens": ["list", "csharp"], "val": 2.9,
+    "resp": "C# Lists are dynamic arrays: List<int> numbers = new List<int>(); Methods: Add(), Remove(), Count, Contains(), Clear().", "cmd": null },
+
+  { "uid": "cs_dictionaries", "cat": "csharp_collections", "tokens": ["dictionary", "hashmap", "csharp"], "val": 3.0,
+    "resp": "C# Dictionary stores key-value pairs: Dictionary<string, int> ages = new Dictionary<string, int>(); Use: Add(key, value), ContainsKey(), Remove().", "cmd": null },
+
+  { "uid": "cs_if_statement", "cat": "csharp_control", "tokens": ["if", "statement", "csharp"], "val": 2.9,
+    "resp": "C# if statements: if (condition) { code } else if (condition) { code } else { code }. Use &&(and), ||(or), !(not) for logic.", "cmd": null },
+
+  { "uid": "cs_switch", "cat": "csharp_control", "tokens": ["switch", "case", "csharp"], "val": 2.9,
+    "resp": "C# switch: switch(variable) { case value1: code; break; case value2: code; break; default: code; break; }", "cmd": null },
+
+  { "uid": "cs_for_loop", "cat": "csharp_loops", "tokens": ["for", "loop", "csharp"], "val": 2.9,
+    "resp": "C# for loop: for (int i = 0; i < 10; i++) { code }. Initialize counter, set condition, define increment.", "cmd": null },
+
+  { "uid": "cs_foreach", "cat": "csharp_loops", "tokens": ["foreach", "loop", "csharp"], "val": 3.0,
+    "resp": "C# foreach: foreach (var item in collection) { code }. Iterates through all items in arrays, lists, or collections.", "cmd": null },
+
+  { "uid": "cs_methods", "cat": "csharp_functions", "tokens": ["method", "function", "csharp"], "val": 3.0,
+    "resp": "C# methods: returnType MethodName(parameters) { code; return value; }. Example: int Add(int a, int b) { return a + b; }", "cmd": null },
+
+  { "uid": "cs_class_basics", "cat": "csharp_oop", "tokens": ["class", "csharp"], "val": 3.2,
+    "resp": "C# classes are blueprints: class Person { public string Name; public int Age; public void Speak() { } }. Create with: Person p = new Person();", "cmd": null },
+
+  { "uid": "cs_inheritance", "cat": "csharp_oop", "tokens": ["inheritance", "inherit", "csharp"], "val": 3.3,
+    "resp": "C# inheritance: class Dog : Animal { }. Dog inherits from Animal. Use 'base' to call parent methods. Use 'virtual' and 'override' for polymorphism.", "cmd": null },
+
+  { "uid": "cs_interface", "cat": "csharp_oop", "tokens": ["interface", "csharp"], "val": 3.3,
+    "resp": "C# interfaces define contracts: interface IDrawable { void Draw(); }. Classes implement: class Circle : IDrawable { public void Draw() { } }", "cmd": null },
+
+  { "uid": "cs_linq_basics", "cat": "csharp_linq", "tokens": ["linq", "query", "csharp"], "val": 3.6,
+    "resp": "C# LINQ queries collections: var result = list.Where(x => x > 5).OrderBy(x => x).Select(x => x * 2); Needs using System.Linq;", "cmd": null },
+
+  { "uid": "cs_lambda", "cat": "csharp_advanced", "tokens": ["lambda", "expression", "csharp"], "val": 3.7,
+    "resp": "C# lambda expressions: (parameters) => expression. Example: numbers.Where(x => x > 5) or Func<int, int> square = x => x * x;", "cmd": null },
+
+  { "uid": "cs_async_await", "cat": "csharp_advanced", "tokens": ["async", "await", "csharp"], "val": 3.9,
+    "resp": "C# async/await: async Task<int> GetDataAsync() { await Task.Delay(1000); return 42; } Call with: int result = await GetDataAsync();", "cmd": null },
+
+  { "uid": "cs_delegates", "cat": "csharp_advanced", "tokens": ["delegate", "csharp"], "val": 3.8,
+    "resp": "C# delegates are function pointers: delegate int Operation(int x, int y); Operation op = Add; int result = op(5, 3);", "cmd": null }
+]
