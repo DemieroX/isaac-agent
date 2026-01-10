@@ -533,7 +533,7 @@ async def main():
     print_banner(len(brain.core_knowledge), brain.get_module_stats())
     await speech.speak(f"{brain.name} online. Core knowledge and dynamic modules ready.")
     
-    print("\n[SYSTEM] Calibrating microphone...")
+    print("\n[SYSTEM] Listening microphone...")
     
     # Main loop
     while True:
