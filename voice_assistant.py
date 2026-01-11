@@ -1,5 +1,5 @@
 """
-ISAAC Voice Interpreter
+ISAAC Voice Assistant
 
 Voice-activated interface for ISAAC Core.
 """
