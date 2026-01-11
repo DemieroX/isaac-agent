@@ -10,12 +10,12 @@
 ```
 # **ISAAC: Deterministic Dyno-Module Agent**
 
-Modular, non-generative intent engine designed for local-first automation. Unlike LLMs, ISAAC utilizes a deterministic token-matching system with dynamic knowledge modules, allowing the expansion of data.
+Modular, non-generative intent engine designed for local-first automation. Unlike generative-AI models, ISAAC utilizes a deterministic token-matching system with dynamic knowledge modules, allowing for a predictable & expandable agent system.
 
 ## **Key Features**
 
-* **Dyno-Modules**: Dynamic JSON knowledge modules that load on-demand when specific keywords are detected. (Specific keywords are stored in bridge data file.)
-* **Lexical Expansion**: Built-in support for WordNet synonyms and fuzzy string matching for natural interaction without training data.
+* **Dyno-Modules**: Dynamic JSON knowledge/data modules that load on-demand when specific keywords are detected. (Specific keywords are stored in bridge data file.)
+* **Lexical Expansion**: Built-in support for WordNet synonyms and fuzzy string matching for natural interaction without training data. (If a word is not found, tries synonyms to make up for it.)
 * **Contextual Weighting**: Layered scoring system that considers token matches, module priority, action verbs, and word uniqueness.
 * **Platform Independent Core**: The engine should works on Windows, macOS, and Linux with zero platform-specific dependencies.
 
@@ -23,9 +23,9 @@ Modular, non-generative intent engine designed for local-first automation. Unlik
 
 ### **Processing Pipeline**
 
-1. **Tokenization & Verb Detection**: User input is cleaned of stop words and analyzed for action verbs (inspired by classic text adventure parsers like ZORK).
+1. **Tokenization & Verb Detection**: User input is cleaned of stop words and analyzed for action verbs (inspired by text adventure games like ZORK).
 
-2. **Module Loading**: If you have keywords like "csharp" or "python" in your bridge data and detected in the input, the corresponding knowledge module is loaded from the bridge system and given priority.
+2. **Module Loading**: If you have specified keywords in your bridge data, ISAAC can detect it from the input & the specified knowledge module is loaded from the bridge system, with priority.
 
 4. **Scoring Algorithm**: Each knowledge entry receives a score based on:
 
@@ -178,7 +178,7 @@ Create `braindata/python_module.json`:
 
 ### **Step 2: Register in Bridge**
 
-Once a module is created, we need to tell Isaac when to call for these modules so we don't overload the system with all modules at once.
+Once a module is created, we need to tell ISAAC when to call for these modules so we don't overload the system with all modules at once.
 
 Add to `braindata/bridgedata.json`:
 
