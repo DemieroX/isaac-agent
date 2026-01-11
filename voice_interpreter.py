@@ -1,20 +1,28 @@
 """
 ISAAC Voice Interpreter
-Version 0.5.0 - Voice Interface Example
 
 Voice-activated interface for ISAAC Core.
-Platform-specific: Requires Windows for winsound module.
 """
 
 import asyncio
-import edge_tts
 import os
 import time
 import glob
 import sys
 import warnings
 
-# Windows-specific imports
+try:
+    import edge_tts
+except ImportError:
+    print("ERROR: edge-tts not installed. Run: pip install edge-tts")
+    sys.exit(1)
+
+try:
+    import speech_recognition as sr
+except ImportError:
+    print("ERROR: speech_recognition not installed. Run: pip install SpeechRecognition PyAudio")
+    sys.exit(1)
+
 try:
     import winsound
     HAS_WINSOUND = True
@@ -22,56 +30,41 @@ except ImportError:
     HAS_WINSOUND = False
     print("Warning: winsound not available (Windows only). Beeps disabled.")
 
-import speech_recognition as sr
-
-# Suppress pygame welcome message
 warnings.filterwarnings("ignore", category=UserWarning, module='pygame.pkgdata')
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
-import pygame
+try:
+    import pygame
+except ImportError:
+    print("ERROR: pygame not installed. Run: pip install pygame")
+    sys.exit(1)
 
-# Import ISAAC Core
 from isaac_core import IsaacCore
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
 class VoiceConfig:
-    """Voice interface configuration"""
     WAKE_WORDS = ["computer", "isaac"]
-    
-    # TTS Voice
     TTS_VOICE = "en-US-AndrewNeural"
     
-    # Speech recognition settings
     ENERGY_THRESHOLD = 300
     PAUSE_THRESHOLD = 1.0
     PHRASE_THRESHOLD = 0.2
     NON_SPEAKING_DURATION = 0.5
     
-    # Timeout settings
     AMBIENT_CALIBRATION = 1.5
     WAKE_WORD_TIME_LIMIT = 10
     COMMAND_TIMEOUT = 8
     COMMAND_TIME_LIMIT = 15
     
-    # Audio
     BEEP_FREQUENCY = 600
     BEEP_DURATION = 100
 
-# ============================================================================
-# SPEECH SYSTEM
-# ============================================================================
 class SpeechSystem:
-    """Handles text-to-speech and audio playback"""
-    
     def __init__(self, base_dir):
         self.base_dir = base_dir
         pygame.mixer.init()
     
     async def speak(self, text):
-        """Convert text to speech and play it"""
         if not text.strip():
             return
         
@@ -94,28 +87,20 @@ class SpeechSystem:
             print(f"Speech error: {e}")
     
     def cleanup(self):
-        """Remove temporary speech files"""
-        for f in glob.glob(os.path.join(self.base_dir, "speech_*.mp3")):
+        for file in glob.glob(os.path.join(self.base_dir, "speech_*.mp3")):
             try:
-                os.remove(f)
+                os.remove(file)
             except:
                 pass
     
     def shutdown(self):
-        """Clean shutdown"""
         pygame.mixer.quit()
 
-# ============================================================================
-# VOICE RECOGNIZER
-# ============================================================================
 class VoiceRecognizer:
-    """Handles voice input and wake word detection"""
-    
     def __init__(self):
         self.recognizer = sr.Recognizer()
         self.microphone = sr.Microphone()
         
-        # Configure recognizer
         self.recognizer.dynamic_energy_threshold = True
         self.recognizer.energy_threshold = VoiceConfig.ENERGY_THRESHOLD
         self.recognizer.pause_threshold = VoiceConfig.PAUSE_THRESHOLD
@@ -123,14 +108,12 @@ class VoiceRecognizer:
         self.recognizer.non_speaking_duration = VoiceConfig.NON_SPEAKING_DURATION
     
     def calibrate(self, source):
-        """Calibrate for ambient noise"""
         self.recognizer.adjust_for_ambient_noise(
             source, 
             duration=VoiceConfig.AMBIENT_CALIBRATION
         )
     
     def listen_for_wake_word(self, source):
-        """Listen for wake word"""
         audio = self.recognizer.listen(
             source, 
             timeout=None, 
@@ -141,7 +124,6 @@ class VoiceRecognizer:
         return any(wake in text for wake in VoiceConfig.WAKE_WORDS)
     
     def listen_for_command(self, source):
-        """Listen for command after wake word detected"""
         audio = self.recognizer.listen(
             source,
             timeout=VoiceConfig.COMMAND_TIMEOUT,
@@ -149,11 +131,7 @@ class VoiceRecognizer:
         )
         return self.recognizer.recognize_google(audio)
 
-# ============================================================================
-# UI BANNER
-# ============================================================================
 def print_banner(stats):
-    """Display ASCII art banner and system status"""
     module_list = ', '.join(stats['module_names']) if stats['module_names'] else 'None'
     
     banner = f"""
@@ -179,61 +157,42 @@ def print_banner(stats):
 """
     print(banner)
 
-# ============================================================================
-# MAIN APPLICATION
-# ============================================================================
 async def main():
-    """Main voice interpreter loop"""
-    
-    # Setup
     base_dir = os.path.dirname(os.path.abspath(__file__))
     brain_dir = os.path.join(base_dir, "braindata")
     
-    # Initialize ISAAC Core
     isaac = IsaacCore(brain_dir)
-    
-    # Initialize voice systems
     speech = SpeechSystem(base_dir)
     voice = VoiceRecognizer()
     
-    # Cleanup old files
     speech.cleanup()
     
-    # Display banner
     stats = isaac.get_stats()
     print_banner(stats)
     
-    # Startup message
     await speech.speak(f"{isaac.name} online. Core knowledge and dynamic modules ready.")
     
     print("\n[SYSTEM] Listening for wake word...")
     
-    # Main loop
     while True:
         with voice.microphone as source:
             try:
-                # Calibrate for ambient noise
                 voice.calibrate(source)
                 
-                # Listen for wake word
                 if voice.listen_for_wake_word(source):
-                    # Play acknowledgment beep
                     if HAS_WINSOUND:
                         winsound.Beep(
                             VoiceConfig.BEEP_FREQUENCY, 
                             VoiceConfig.BEEP_DURATION
                         )
                     
-                    # Listen for command
                     command_text = voice.listen_for_command(source)
                     
                     print(f"\n[USER]: {command_text}")
                     
-                    # Process with ISAAC Core
                     response = isaac.process(command_text)
                     print(f"[{isaac.name.upper()}]: {response}\n")
                     
-                    # Speak response
                     await speech.speak(response)
                     
             except (sr.WaitTimeoutError, sr.UnknownValueError):
@@ -242,9 +201,6 @@ async def main():
                 print(f"Error: {e}")
                 continue
 
-# ============================================================================
-# ENTRY POINT
-# ============================================================================
 if __name__ == "__main__":
     try:
         asyncio.run(main())
